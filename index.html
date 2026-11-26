@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Baccarat Scoreboard</title>
+<meta name="description" content="Private offline baccarat scoreboard: bead plate, big road and the three derived roads." />
+<meta name="theme-color" content="#0d3524" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Scoreboard" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="rotate-hint" aria-hidden="true">
+  <div class="rotate-card">
+    <div class="rotate-icon"></div>
+    <strong>Rotate to landscape</strong>
+    <span>This scoreboard is designed for landscape.</span>
+  </div>
+</div>
+
+<main id="board">
+  <section class="panel" id="p-bead">
+    <header class="panel-head"><h2>Bead Plate</h2><span class="head-meta" id="bead-meta">0</span></header>
+    <div class="scrollx" id="bead-scroll">
+      <div class="grid" id="bead"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-big">
+    <header class="panel-head"><h2>Big Road</h2><span class="head-meta" id="big-meta">0</span></header>
+    <div class="scrollx" id="big-scroll">
+      <div class="grid" id="bigroad"></div>
+    </div>
+  </section>
+
+  <div id="derived">
+    <section class="panel panel-mini" id="p-beb">
+      <header class="panel-head"><h2>Big Eye Boy</h2></header>
+      <div class="scrollx" id="beb-scroll"><div class="grid" id="beb"></div></div>
+    </section>
+    <section class="panel panel-mini" id="p-small">
+      <header class="panel-head"><h2>Small Road</h2></header>
+      <div class="scrollx" id="small-scroll"><div class="grid" id="smallroad"></div></div>
+    </section>
+    <section class="panel panel-mini" id="p-cock">
+      <header class="panel-head"><h2>Cockroach Pig</h2></header>
+      <div class="scrollx" id="cock-scroll"><div class="grid" id="cockroad"></div></div>
+    </section>
+  </div>
+</main>
+
+<footer id="bar">
+  <div class="stats" id="stats">
+    <span class="stat s-b"><i class="dot-c b"></i><em>Banker</em><b id="st-b">0</b></span>
+    <span class="stat s-p"><i class="dot-c p"></i><em>Player</em><b id="st-p">0</b></span>
+    <span class="stat s-t"><i class="dot-c t"></i><em>Tie</em><b id="st-t">0</b></span>
+    <span class="stat"><i class="dot-c b small"></i><em>B Pair</em><b id="st-bp">0</b></span>
+    <span class="stat"><i class="dot-c p small"></i><em>P Pair</em><b id="st-pp">0</b></span>
+    <span class="stat"><i class="dot-c nat"></i><em>Natural</em><b id="st-nat">0</b></span>
+    <span class="stat stat-game"><em>Game</em><b id="st-game">0</b></span>
+  </div>
+  <div class="bar-actions">
+    <button id="btn-add" class="btn primary" type="button">
+      <span class="plus">+</span><span>Add Hand</span>
+    </button>
+    <button id="btn-undo" class="btn" type="button">Undo</button>
+    <button id="btn-menu" class="btn icon" type="button" aria-label="Menu">&hellip;</button>
+  </div>
+</footer>
+
+<!-- ============ HAND ENTRY (large screen) ============ -->
+<div id="entry" class="overlay" hidden>
+  <header class="entry-head">
+    <div class="entry-head-left">
+      <span class="entry-kicker">Hand Entry</span>
+      <span class="entry-game">Game <b id="e-game">0</b></span>
+    </div>
+    <div class="entry-head-right">
+      <button class="btn ghost" id="e-undo" type="button">Undo Last</button>
+      <button class="btn ghost" id="e-close" type="button">Close</button>
+    </div>
+  </header>
+
+  <div class="entry-body">
+    <div class="mods">
+      <button class="mod" data-mod="bp" type="button"><i class="dot-c b small"></i>Banker Pair</button>
+      <button class="mod" data-mod="pp" type="button"><i class="dot-c p small"></i>Player Pair</button>
+      <button class="mod" data-mod="nat" type="button"><i class="dot-c nat"></i>Natural</button>
+      <div class="preview" id="e-preview">Next: Banker</div>
+      <div class="last-hand" id="e-last">Last hand: &mdash;</div>
+    </div>
+
+    <div class="outcomes">
+      <button class="outcome o-b" data-o="B" type="button">
+        <span class="o-name">Banker</span>
+        <span class="o-count" id="o-b">0</span>
+      </button>
+      <button class="outcome o-p" data-o="P" type="button">
+        <span class="o-name">Player</span>
+        <span class="o-count" id="o-p">0</span>
+      </button>
+      <button class="outcome o-t" data-o="T" type="button">
+        <span class="o-name">Tie</span>
+        <span class="o-count" id="o-t">0</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MENU ============ -->
+<div id="menu" class="sheet-wrap" hidden>
+  <div class="sheet">
+    <header class="sheet-head"><h3>Shoe</h3><button class="btn ghost" id="m-close" type="button">Close</button></header>
+    <div class="sheet-body">
+      <button class="sheet-btn" id="m-new" type="button"><b>New Shoe</b><span>Archive this shoe and start game 1</span></button>
+      <button class="sheet-btn" id="m-history" type="button"><b>History</b><span id="m-history-meta">No archived shoes</span></button>
+      <button class="sheet-btn toggle" id="m-sound" type="button"><b>Sound</b><span id="m-sound-state">On</span></button>
+      <button class="sheet-btn toggle" id="m-haptics" type="button"><b>Haptics</b><span id="m-haptics-state">On</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HISTORY ============ -->
+<div id="history" class="sheet-wrap" hidden>
+  <div class="sheet wide">
+    <header class="sheet-head"><h3>Shoe History</h3><button class="btn ghost" id="h-close" type="button">Close</button></header>
+    <div class="sheet-body" id="h-list"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js" defer></script>
+</body>
+</html>
