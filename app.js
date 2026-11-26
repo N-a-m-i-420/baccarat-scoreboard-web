@@ -60,133 +60,12 @@ function activeShoe() {
 
 /* ---------------- roads ---------------- */
 
-const k = (r, c) => r + ':' + c;
-
 /**
- * Big road: columns of streaks, 6 rows tall.
- *  - a streak continues downward
- *  - a change starts a new column at the top
- *  - a streak longer than 6 turns the corner: one cell right on the bottom
- *    row, then continues upward ("dragon tail")
- *  - ties do not take a cell; they add a green slash to the previous cell
+ * The road engine (Big Road, Big Eye Boy, Small Road, Cockroach Pig and the
+ * predictor) lives in roads.js so it can be unit-tested outside the browser:
+ *   node tools/test-roads.js
  */
-function buildBigRoad(hands) {
-  const cells = new Map();
-  const depth = [];
-  const order = [];
-  let last = null;
-
-  const findTailSpot = (col) => {
-    let c = col;
-    // first free bottom-row cell to the right, then climb up that column
-    while (cells.has(k(ROWS - 1, c))) c += 1;
-    if (!cells.has(k(ROWS - 1, c))) return { r: ROWS - 1, c };
-    return null;
-  };
-
-  for (const hand of hands) {
-    if (hand.o === 'T') {
-      if (last) {
-        const cell = cells.get(k(last.r, last.c));
-        if (cell) cell.ties += 1;
-      }
-      continue;
-    }
-
-    let r;
-    let c;
-
-    if (!last) {
-      r = 0; c = 0;
-    } else if (last.o === hand.o) {
-      // continuation
-      if (last.r < ROWS - 1 && !cells.has(k(last.r + 1, last.c))) {
-        r = last.r + 1; c = last.c;
-      } else if (last.r === ROWS - 1) {
-        const spot = findTailSpot(last.c + 1);
-        r = spot.r; c = spot.c;
-      } else {
-        // column blocked lower down (shouldn't happen) — start new column
-        c = last.c + 1; r = 0;
-        while (r < ROWS - 1 && cells.has(k(r, c))) r += 1;
-      }
-    } else {
-      // new column
-      c = last.c + 1;
-      r = 0;
-      while (r < ROWS - 1 && cells.has(k(r, c))) r += 1;
-    }
-
-    cells.set(k(r, c), { o: hand.o, ties: 0, hand });
-    depth[c] = (depth[c] || 0) + 1;
-    order.push({ r, c, o: hand.o });
-    last = { r, c, o: hand.o };
-  }
-
-  const cols = order.reduce((m, p) => Math.max(m, p.c), 0) + 1;
-  return { cells, depth, order, cols: order.length ? cols : 0 };
-}
-
-/**
- * Derived roads, lookback L (1 = Big Eye Boy, 2 = Small Road, 3 = Cockroach Pig).
- *  - new column: red when the column one to the left has the same depth as the
- *    column L to the left of that one (pattern repeated), blue when it differs
- *  - continuation: red while the column to the left still reaches this row,
- *    blue once the streak grows past it (pattern broke)
- */
-function derivedMarks(big, L) {
-  const marks = [];
-  const depth = new Array(Math.max(1, big.cols + 2)).fill(0);
-
-  for (const p of big.order) {
-    depth[p.c] = (depth[p.c] || 0) + 1;
-    let mark = null;
-
-    if (p.r === 0) {
-      const a = p.c - 1;
-      const b = p.c - 1 - L;
-      if (b >= 0 && a >= 0) mark = (depth[a] || 0) === (depth[b] || 0) ? 'R' : 'B';
-    } else if (p.c >= 1) {
-      mark = (depth[p.c - 1] || 0) > p.r ? 'R' : 'B';
-    }
-
-    if (mark) marks.push(mark);
-  }
-  return marks;
-}
-
-/** Lay a flat list of marks into a 6-row derived grid. */
-function layoutMarks(marks) {
-  const cells = new Map();
-  let last = null;
-  let maxCol = 0;
-
-  marks.forEach((mark) => {
-    let r; let c;
-    if (!last) {
-      r = 0; c = 0;
-    } else if (last.m === mark) {
-      if (last.r < ROWS - 1 && !cells.has(k(last.r + 1, last.c))) {
-        r = last.r + 1; c = last.c;
-      } else if (last.r === ROWS - 1) {
-        c = last.c + 1;
-        while (cells.has(k(ROWS - 1, c))) c += 1;
-        r = ROWS - 1;
-      } else {
-        c = last.c + 1; r = 0;
-        while (r < ROWS - 1 && cells.has(k(r, c))) r += 1;
-      }
-    } else {
-      c = last.c + 1; r = 0;
-      while (r < ROWS - 1 && cells.has(k(r, c))) r += 1;
-    }
-    cells.set(k(r, c), { m: mark });
-    last = { r, c, m: mark };
-    maxCol = Math.max(maxCol, c);
-  });
-
-  return { cells, cols: marks.length ? maxCol + 1 : 0 };
-}
+const cellAt = (road, r, c) => road.cells.get(r + ':' + c);
 
 function computeStats(hands) {
   const s = { B: 0, P: 0, T: 0, bp: 0, pp: 0, nat: 0, total: hands.length };
@@ -281,26 +160,26 @@ function renderBead(hands, fit) {
   $('bead-meta').textContent = hands.length ? String(hands.length) : '';
 }
 
-function renderBigRoad(big, cols) {
+function renderBigRoad(road, cols) {
   const grid = $('bigroad');
   grid.innerHTML = '';
   const frag = document.createDocumentFragment();
   for (let c = 0; c < cols; c += 1) {
     for (let r = 0; r < ROWS; r += 1) {
-      const entry = big.cells.get(k(r, c));
+      const entry = cellAt(road, r, c);
       let inner = '';
       if (entry) {
-        inner += `<span class="mk ${entry.o.toLowerCase()}"></span>`;
+        inner += `<span class="mk ${entry.side.toLowerCase()}"></span>`;
         if (entry.ties) inner += tieSlashes(entry.ties);
-        if (entry.hand.bp) inner += '<i class="corner bp"></i>';
-        if (entry.hand.pp) inner += '<i class="corner pp"></i>';
-        if (entry.hand.nat) inner += '<i class="corner nat"></i>';
+        if (entry.hand && entry.hand.bp) inner += '<i class="corner bp"></i>';
+        if (entry.hand && entry.hand.pp) inner += '<i class="corner pp"></i>';
+        if (entry.hand && entry.hand.nat) inner += '<i class="corner nat"></i>';
       }
       frag.appendChild(cellEl(r, c, inner));
     }
   }
   grid.appendChild(frag);
-  $('big-meta').textContent = big.cols ? big.cols + ' col' : '';
+  $('big-meta').textContent = road.colCount ? road.columns.length + ' col' : '';
 }
 
 function renderDerived(id, laid, cols) {
@@ -309,12 +188,55 @@ function renderDerived(id, laid, cols) {
   const frag = document.createDocumentFragment();
   for (let c = 0; c < cols; c += 1) {
     for (let r = 0; r < ROWS; r += 1) {
-      const entry = laid.cells.get(k(r, c));
+      const entry = laid.cells.get(r + ':' + c);
       const inner = entry ? `<span class="mk ${entry.m === 'R' ? 'mark-red' : 'mark-blue'}"></span>` : '';
       frag.appendChild(cellEl(r, c, inner));
     }
   }
   grid.appendChild(frag);
+}
+
+/**
+ * Predictor board: what each derived road would print if the very next hand
+ * were a Banker win (left) or a Player win (right). Red = that road would show
+ * a repeat, blue = it would show a break. Same engine, one hand ahead.
+ */
+const PRED_ROWS = ['beb', 'small', 'cock'];
+
+function predSym(kind, mark) {
+  if (!mark) return '<i class="psym none"></i>';
+  return '<i class="psym ' + kind + ' ' + (mark === 'R' ? 'r' : 'b') + '"></i>';
+}
+
+function renderPredictor(pred) {
+  let bReds = 0;
+  let pReds = 0;
+  let known = 0;
+
+  PRED_ROWS.forEach((row) => {
+    const b = pred.B[row];
+    const p = pred.P[row];
+    $('pred-' + row + '-b').innerHTML = predSym(row, b);
+    $('pred-' + row + '-p').innerHTML = predSym(row, p);
+    if (b || p) known += 1;
+    if (b === 'R') bReds += 1;
+    if (p === 'R') pReds += 1;
+  });
+
+  const foot = $('pred-foot');
+  if (!known) {
+    foot.className = 'pred-foot dim';
+    foot.textContent = 'Needs more columns';
+    $('pred-meta').textContent = '';
+    return;
+  }
+  foot.className = 'pred-foot';
+  foot.innerHTML =
+    '<span class="' + (bReds >= pReds ? 'lead' : '') + '">B&nbsp;' + bReds + '</span>' +
+    '<span class="sep">&middot;</span>' +
+    '<span class="' + (pReds > bReds ? 'lead' : '') + '">P&nbsp;' + pReds + '</span>';
+  foot.title = 'Derived roads that would show a repeat: ' + bReds + ' if Banker, ' + pReds + ' if Player';
+  $('pred-meta').textContent = known + '/3';
 }
 
 function renderStats(stats) {
@@ -339,22 +261,23 @@ function scrollToEnd(id, cell) {
 function render(opts = {}) {
   const shoe = activeShoe();
   const hands = shoe.hands;
-  const big = buildBigRoad(hands);
+  const road = Roads.buildRoad(hands);
   const stats = computeStats(hands);
 
   const lays = {
-    beb: layoutMarks(derivedMarks(big, 1)),
-    small: layoutMarks(derivedMarks(big, 2)),
-    cock: layoutMarks(derivedMarks(big, 3))
+    beb: Roads.layoutMarks(Roads.derivedMarks(road, 1)),
+    small: Roads.layoutMarks(Roads.derivedMarks(road, 2)),
+    cock: Roads.layoutMarks(Roads.derivedMarks(road, 3))
   };
   const beadFit = fitBead(hands);
-  const bigFit = fitPanel('big-scroll', big.cols, 13, 56);
-  const miniFit = fitPanel('beb-scroll', Math.max(lays.beb.cols, lays.small.cols, lays.cock.cols), 8, 32);
+  const bigFit = fitPanel('big-scroll', road.colCount, 13, 56);
+  const miniFit = fitPanel('beb-scroll', Math.max(lays.beb.colCount, lays.small.colCount, lays.cock.colCount), 8, 32);
 
   applyCellVars({ big: bigFit.cell, bead: beadFit.cell, mini: miniFit.cell });
 
   renderBead(hands, beadFit);
-  renderBigRoad(big, bigFit.cols);
+  renderBigRoad(road, bigFit.cols);
+  renderPredictor(Roads.predictor(road));
   renderDerived('beb', lays.beb, miniFit.cols);
   renderDerived('smallroad', lays.small, miniFit.cols);
   renderDerived('cockroad', lays.cock, miniFit.cols);

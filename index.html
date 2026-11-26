@@ -34,6 +34,29 @@
     </div>
   </section>
 
+  <section class="panel" id="p-pred">
+    <header class="panel-head"><h2>Predictor</h2><span class="head-meta" id="pred-meta"></span></header>
+    <div class="pred-body">
+      <span class="pred-corner"></span>
+      <span class="pred-col-h b">Banker</span>
+      <span class="pred-col-h p">Player</span>
+
+      <span class="pred-label">Big Eye</span>
+      <span class="pred-cell" id="pred-beb-b"></span>
+      <span class="pred-cell" id="pred-beb-p"></span>
+
+      <span class="pred-label">Small Rd</span>
+      <span class="pred-cell" id="pred-small-b"></span>
+      <span class="pred-cell" id="pred-small-p"></span>
+
+      <span class="pred-label">Cockroach</span>
+      <span class="pred-cell" id="pred-cock-b"></span>
+      <span class="pred-cell" id="pred-cock-p"></span>
+
+      <span class="pred-foot dim" id="pred-foot">Needs more columns</span>
+    </div>
+  </section>
+
   <section class="panel" id="p-big">
     <header class="panel-head"><h2>Big Road</h2><span class="head-meta" id="big-meta">0</span></header>
     <div class="scrollx" id="big-scroll">
@@ -138,6 +161,7 @@
 
 <div id="toast" class="toast" hidden></div>
 
+<script src="roads.js" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>

@@ -51,21 +51,22 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 3.1fr);
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.82fr) minmax(0, 2.9fr);
   grid-template-rows: minmax(0, 1.62fr) minmax(0, 1fr);
   grid-template-areas:
-    "bead big"
-    "der  der";
+    "bead pred big"
+    "der  der  der";
   gap: 6px;
   padding: 6px 6px 0;
 }
 
 #p-bead { grid-area: bead; }
+#p-pred { grid-area: pred; }
 #p-big  { grid-area: big; }
 
 /* tablets / desktop: give the bead plate room so its 6 rows stay square-ish */
 @media (min-width: 900px) and (orientation: landscape) {
-  #board { grid-template-columns: minmax(0, 1.15fr) minmax(0, 2.45fr); }
+  #board { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.78fr) minmax(0, 2.4fr); }
 }
 #derived {
   grid-area: der;
@@ -209,6 +210,120 @@ body {
   border-bottom: 5px solid #8a6b1f;
   border-radius: 0;
   opacity: .9;
+}
+
+/* ---------- predictor board ---------- */
+.pred-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto repeat(3, minmax(0, 1fr)) auto;
+  gap: 2px 3px;
+  padding: 3px 5px 4px;
+}
+
+.pred-col-h {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: clamp(7px, 1.8vh, 11px);
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding-bottom: 1px;
+}
+.pred-col-h.b { color: var(--b); }
+.pred-col-h.p { color: var(--p); }
+
+.pred-label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: clamp(7px, 1.9vh, 11px);
+  font-weight: 700;
+  color: #6d5b44;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pred-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  border-radius: 4px;
+  background: rgba(120, 92, 52, .1);
+  box-shadow: inset 0 0 0 1px rgba(109, 83, 51, .14);
+  font-size: clamp(12px, 6.2vh, 34px);
+}
+
+.psym { display: inline-block; flex: 0 0 auto; }
+.psym.r { color: var(--b); }
+.psym.b { color: var(--p); }
+.psym.none {
+  width: .7em; height: .7em;
+  border-radius: 50%;
+  border: 1px dashed rgba(109, 83, 51, .4);
+}
+.psym.beb {
+  width: .92em; height: .92em;
+  border-radius: 50%;
+  border: max(1.4px, .2vh) solid currentColor;
+  background: transparent;
+}
+.psym.small { width: .74em; height: .74em; border-radius: 50%; background: currentColor; }
+.psym.cock {
+  width: 1em;
+  height: max(1.6px, .22vh);
+  border-radius: 2px;
+  background: currentColor;
+  transform: rotate(-45deg);
+}
+
+.pred-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
+  padding-top: 1px;
+  font-size: clamp(8px, 1.9vh, 12px);
+  font-weight: 800;
+  letter-spacing: .05em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.pred-foot.dim {
+  font-weight: 600;
+  font-size: clamp(6px, 1.3vh, 9px);
+  color: #a08d6f;
+}
+.pred-foot .lead {
+  color: var(--ink);
+  background: rgba(232, 201, 122, .6);
+  border-radius: 4px;
+  padding: 0 .3em;
+}
+.pred-foot .sep { opacity: .45; }
+
+/* narrow phones: give the predictor the width it needs for its labels */
+@media (orientation: landscape) and (max-width: 720px) {
+  #board { grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr) minmax(0, 2.5fr); }
+  #bead-meta { display: none; }
+  .pred-body {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2px;
+    padding: 2px 3px 3px;
+  }
+  .pred-label { font-size: 6.5px; letter-spacing: 0; }
+  .pred-col-h { font-size: 6.5px; letter-spacing: .02em; }
+  .pred-foot { font-size: 7px; }
+  .pred-cell { font-size: clamp(10px, 5.4vh, 22px); }
 }
 
 /* ---------- bottom bar ---------- */
