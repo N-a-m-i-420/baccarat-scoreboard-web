@@ -382,7 +382,7 @@ function previewLabel() {
   if (ui.mods.bp) parts.push('Banker Pair');
   if (ui.mods.pp) parts.push('Player Pair');
   if (ui.mods.nat) parts.push('Natural');
-  return parts.length ? parts.join(' + ') : 'no side bets';
+  return parts.length ? parts.join(' + ') : 'Banker / Player / Tie';
 }
 
 function renderEntryState(stats) {
@@ -390,7 +390,7 @@ function renderEntryState(stats) {
   $('o-b').textContent = stats.B;
   $('o-p').textContent = stats.P;
   $('o-t').textContent = stats.T;
-  $('e-preview').textContent = 'Next: ' + previewLabel();
+  $('e-preview').textContent = 'Next hand: ' + previewLabel();
   document.querySelectorAll('.mod').forEach((btn) => {
     btn.setAttribute('aria-pressed', ui.mods[btn.dataset.mod] ? 'true' : 'false');
   });
