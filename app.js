@@ -99,20 +99,73 @@ function tieSlashes(n) {
 }
 
 /**
- * Panel-driven sizing: six rows always fill the panel height, the column count
- * grows to fill the width, and the cell is nudged down so the last column never
- * hangs off the edge. Phones stay dense, tablets stop showing postage stamps
- * in a sea of beige.
+ * Board sizing. The rail (bead plate + predictor) and the big road share the top
+ * row; the derived roads get the bottom row. Everything is measured from the
+ * live DOM so no panel ends up with dead beige space and the big road always
+ * shows ~20 columns instead of scrolling straight away.
  */
-function fitPanel(scrollId, contentCols, minCell, maxCell) {
-  const el = $(scrollId);
-  const w = el ? el.clientWidth : 0;
-  const h = el ? el.clientHeight : 0;
-  let cell = Math.floor((h - 1) / ROWS);
-  cell = Math.max(minCell, Math.min(maxCell, cell || minCell));
-  // always cover the panel width so no bare panel shows through the grid
-  const cols = Math.max(contentCols + 1, w ? Math.ceil(w / cell) : 8);
-  return { cell, cols };
+const MIN_BIG_CELL = 22;
+const MAX_BIG_CELL = 72;
+const TARGET_BIG_COLS = 20;
+const MIN_PRED_H = 66;   // the predictor needs room for 3 mark rows + headers
+
+function headHeight(sel) {
+  const el = document.querySelector(sel + ' .panel-head');
+  return el ? Math.round(el.getBoundingClientRect().height) : 17;
+}
+
+function layoutBoard(hands, road, lays) {
+  const board = $('board');
+  const GAP = 6;
+  const H = Math.max(120, board.clientHeight - 6);       // padding-top only
+  const bigW = Math.max(80, $('big-scroll').clientWidth);
+  const beadW = Math.max(40, $('bead-scroll').clientWidth);
+  const derW = Math.max(60, $('beb-scroll').clientWidth);
+  const hBig = headHeight('#p-big');
+  const hDer = headHeight('#p-beb');
+  const hBead = headHeight('#p-bead');
+
+  // big road: ~TARGET_BIG_COLS columns across, but never so tall that the
+  // derived row is squeezed out
+  const byWidth = Math.round(bigW / TARGET_BIG_COLS);
+  const byHeight = Math.floor((H - GAP - hDer - 14 * 6) / 6);
+  const bigCell = Math.max(MIN_BIG_CELL, Math.min(MAX_BIG_CELL, byWidth, byHeight));
+  const bigH = hBig + bigCell * 6;
+
+  // derived roads get whatever is left, capped so the marks stay sane
+  const derH = Math.max(60, H - GAP - bigH);
+  const miniCell = Math.max(8, Math.min(56, Math.floor((derH - hDer - 1) / 6)));
+  const derContent = Math.max(lays.beb.colCount, lays.small.colCount, lays.cock.colCount);
+  const derCols = Math.max(derContent + 1, Math.ceil(derW / miniCell));
+
+  // bead plate: 6 rows, as many columns as the shoe needs, never taller than the
+  // rail minus a usable predictor
+  const beadNeeded = Math.max(1, Math.ceil(hands.length / ROWS));
+  const beadCell = Math.max(6, Math.min(
+    Math.floor((bigH - GAP - hBead - MIN_PRED_H) / 6),
+    Math.floor(beadW / beadNeeded),
+    44
+  ));
+  const beadCols = Math.max(beadNeeded, Math.floor(beadW / beadCell));
+
+  const beadH = hBead + beadCell * 6 + 2;
+  board.style.gridTemplateRows = bigH + 'px minmax(0, 1fr)';
+  $('p-bead').style.height = beadH + 'px';
+
+  // predictor marks scale to the row height that is actually left over, so they
+  // never spill out of their chips on a short screen
+  const predH = Math.max(46, bigH - GAP - beadH);
+  const predInner = Math.max(28, predH - headHeight('#p-pred') - 5);
+  const rowH = (predInner - 20) / 3;
+  const sym = Math.max(7, Math.min(28, Math.floor(rowH * 0.92)));
+  document.documentElement.style.setProperty('--pred-sym', sym + 'px');
+
+  return {
+    bigH,
+    big: { cell: bigCell, cols: Math.max(road.colCount + 1, Math.ceil(bigW / bigCell)) },
+    bead: { cell: beadCell, cols: beadCols, rows: ROWS },
+    mini: { cell: miniCell, cols: derCols }
+  };
 }
 
 function applyCellVars(cells) {
@@ -120,22 +173,6 @@ function applyCellVars(cells) {
   root.setProperty('--cell', cells.big + 'px');
   root.setProperty('--bead', cells.bead + 'px');
   root.setProperty('--mini', cells.mini + 'px');
-}
-
-/** Bead plate: fixed plate that fits every hand of the shoe without scrolling. */
-function fitBead(hands) {
-  const box = $('bead-scroll');
-  const w = box ? box.clientWidth : 0;
-  const h = box ? box.clientHeight : 0;
-  const contentCols = Math.max(1, Math.ceil(hands.length / ROWS));
-  const heightFit = Math.max(7, Math.min(72, Math.floor((h - 1) / ROWS) || 11));
-  const widthFit = w ? Math.floor(w / contentCols) : heightFit;
-  const cell = Math.max(7, Math.min(heightFit, widthFit, 72));
-  return {
-    cell,
-    cols: Math.max(contentCols, w ? Math.floor(w / cell) : 6),
-    rows: Math.max(ROWS, h ? Math.floor(h / cell) : ROWS)
-  };
 }
 
 function renderBead(hands, fit) {
@@ -249,13 +286,16 @@ function renderStats(stats) {
   $('st-game').textContent = stats.total;
 }
 
-function scrollToEnd(id, cell) {
+function scrollToEnd(id, cell, contentCols) {
   const box = $(id);
   if (!box) return;
   const max = box.scrollWidth - box.clientWidth;
   if (max <= 0) { box.scrollLeft = 0; return; }
+  // land on the newest mark, not on the empty filler columns that pad the panel
+  const want = contentCols && cell ? contentCols * cell - box.clientWidth + cell : max;
+  const target = Math.max(0, Math.min(max, want));
   // snap to a column boundary so the newest cell sits flush instead of half-cut
-  box.scrollLeft = cell ? Math.min(max, Math.ceil(max / cell) * cell) : max;
+  box.scrollLeft = cell ? Math.min(max, Math.ceil(target / cell) * cell) : target;
 }
 
 function render(opts = {}) {
@@ -269,18 +309,16 @@ function render(opts = {}) {
     small: Roads.layoutMarks(Roads.derivedMarks(road, 2)),
     cock: Roads.layoutMarks(Roads.derivedMarks(road, 3))
   };
-  const beadFit = fitBead(hands);
-  const bigFit = fitPanel('big-scroll', road.colCount, 13, 56);
-  const miniFit = fitPanel('beb-scroll', Math.max(lays.beb.colCount, lays.small.colCount, lays.cock.colCount), 8, 32);
+  const lay = layoutBoard(hands, road, lays);
 
-  applyCellVars({ big: bigFit.cell, bead: beadFit.cell, mini: miniFit.cell });
+  applyCellVars({ big: lay.big.cell, bead: lay.bead.cell, mini: lay.mini.cell });
 
-  renderBead(hands, beadFit);
-  renderBigRoad(road, bigFit.cols);
+  renderBead(hands, lay.bead);
+  renderBigRoad(road, lay.big.cols);
   renderPredictor(Roads.predictor(road));
-  renderDerived('beb', lays.beb, miniFit.cols);
-  renderDerived('smallroad', lays.small, miniFit.cols);
-  renderDerived('cockroad', lays.cock, miniFit.cols);
+  renderDerived('beb', lays.beb, lay.mini.cols);
+  renderDerived('smallroad', lays.small, lay.mini.cols);
+  renderDerived('cockroad', lays.cock, lay.mini.cols);
   renderStats(stats);
   renderEntryState(stats);
 
@@ -288,10 +326,10 @@ function render(opts = {}) {
   $('e-undo').disabled = hands.length === 0;
 
   requestAnimationFrame(() => {
-    scrollToEnd('big-scroll', bigFit.cell);
-    scrollToEnd('beb-scroll', miniFit.cell);
-    scrollToEnd('small-scroll', miniFit.cell);
-    scrollToEnd('cock-scroll', miniFit.cell);
+    scrollToEnd('big-scroll', lay.big.cell, road.columns.length);
+    scrollToEnd('beb-scroll', lay.mini.cell, lays.beb.colCount);
+    scrollToEnd('small-scroll', lay.mini.cell, lays.small.colCount);
+    scrollToEnd('cock-scroll', lay.mini.cell, lays.cock.colCount);
   });
 
   if (opts.flash) {

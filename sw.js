@@ -1,5 +1,5 @@
 /* Baccarat Scoreboard - offline app shell */
-const CACHE = 'baccarat-scoreboard-v5';
+const CACHE = 'baccarat-scoreboard-v6';
 const ASSETS = [
   './',
   './index.html',
