@@ -115,24 +115,13 @@
       <button class="mod" data-mod="bp" type="button"><i class="dot-c b small"></i>Banker Pair</button>
       <button class="mod" data-mod="pp" type="button"><i class="dot-c p small"></i>Player Pair</button>
       <button class="mod" data-mod="nat" type="button"><i class="dot-c nat"></i>Natural</button>
-      <div class="preview" id="e-preview">Next: Banker</div>
-      <div class="last-hand" id="e-last">Last hand: &mdash;</div>
+      <span class="preview" id="e-preview">Next hand: Banker / Player / Tie</span>
+      <span class="last-hand" id="e-last">Last hand: &mdash;</span>
     </div>
 
-    <div class="outcomes">
-      <button class="outcome o-b" data-o="B" type="button">
-        <span class="o-name">Banker</span>
-        <span class="o-count" id="o-b">0</span>
-      </button>
-      <button class="outcome o-p" data-o="P" type="button">
-        <span class="o-name">Player</span>
-        <span class="o-count" id="o-p">0</span>
-      </button>
-      <button class="outcome o-t" data-o="T" type="button">
-        <span class="o-name">Tie</span>
-        <span class="o-count" id="o-t">0</span>
-      </button>
-    </div>
+    <!-- one pad per outcome: tap a 0-10 value, or tap the plain strip at the
+         bottom of the pad to record the hand without a value -->
+    <div class="pads" id="pads"></div>
   </div>
 </div>
 

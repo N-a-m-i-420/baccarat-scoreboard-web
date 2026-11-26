@@ -10,17 +10,20 @@ const ROWS = 6;              // every road is 6 rows tall
 const MAX_SHOES = 40;        // keep localStorage small
 const HAND_NAMES = { B: 'Banker', P: 'Player', T: 'Tie' };
 
+const DEFAULT_SETTINGS = { sound: true, haptics: true };
+
 let state = loadState();
 const ui = {
   mods: { bp: false, pp: false, nat: false },
   toastTimer: null,
-  audio: null
+  audio: null,
+  clips: {}
 };
 
 /* ---------------- persistence ---------------- */
 
 function defaultState() {
-  return { shoes: [], activeId: null, settings: { sound: true, haptics: true } };
+  return { shoes: [], activeId: null, settings: Object.assign({}, DEFAULT_SETTINGS) };
 }
 
 function loadState() {
@@ -29,7 +32,7 @@ function loadState() {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.shoes)) return defaultState();
-    parsed.settings = Object.assign({ sound: true, haptics: true }, parsed.settings || {});
+    parsed.settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
     return parsed;
   } catch (err) {
     return defaultState();
@@ -207,6 +210,7 @@ function renderBigRoad(road, cols) {
       let inner = '';
       if (entry) {
         inner += `<span class="mk ${entry.side.toLowerCase()}"></span>`;
+        if (entry.hand && typeof entry.hand.v === 'number') inner += '<b class="cval">' + entry.hand.v + '</b>';
         if (entry.ties) inner += tieSlashes(entry.ties);
         if (entry.hand && entry.hand.bp) inner += '<i class="corner bp"></i>';
         if (entry.hand && entry.hand.pp) inner += '<i class="corner pp"></i>';
@@ -333,7 +337,7 @@ function render(opts = {}) {
   });
 
   if (opts.flash) {
-    const el = document.querySelector('.outcome.o-' + opts.flash.toLowerCase());
+    const el = document.querySelector('.pad.pad-' + opts.flash.toLowerCase());
     if (el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
   }
 }
@@ -362,6 +366,7 @@ function renderEntryState(stats) {
     $('e-last').textContent = 'Last hand: —';
   } else {
     const tags = [];
+    if (typeof last.v === 'number') tags.push('value ' + last.v);
     if (last.bp) tags.push('B pair');
     if (last.pp) tags.push('P pair');
     if (last.nat) tags.push('natural');
@@ -379,8 +384,44 @@ function flash(msg) {
   ui.toastTimer = setTimeout(() => { el.hidden = true; }, 1400);
 }
 
-function tick() {
+/* ---------------- audio ----------------
+   One short recorded clip per outcome (audio/banker.mp3, player.mp3, tie.mp3).
+   Two players per outcome so a quick Banker-then-Player still sounds both. */
+const CLIPS = { B: 'audio/banker.mp3', P: 'audio/player.mp3', T: 'audio/tie.mp3' };
+const CLIP_POOL = 2;
+
+function clipFor(outcome) {
+  const key = CLIPS[outcome] ? outcome : null;
+  if (!key) return null;
+  if (!ui.clips[key]) {
+    ui.clips[key] = [];
+    for (let i = 0; i < CLIP_POOL; i += 1) {
+      const el = new Audio(CLIPS[key]);
+      el.preload = 'auto';
+      el.setAttribute('data-clip', key);
+      ui.clips[key].push(el);
+    }
+  }
+  return ui.clips[key];
+}
+
+function playClip(outcome) {
   if (!state.settings.sound) return;
+  const pool = clipFor(outcome);
+  if (!pool) return;
+  const el = pool.find((a) => a.paused || a.ended) || pool[0];
+  try {
+    el.pause();
+    el.currentTime = 0;
+    const p = el.play();
+    if (p && typeof p.catch === 'function') p.catch(() => beep());
+  } catch (err) {
+    beep();
+  }
+}
+
+/** Emergency fallback only: the old 880 Hz blip, used if a clip cannot play. */
+function beep() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
@@ -403,17 +444,26 @@ function haptic() {
   if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { /* ignore */ } }
 }
 
-function addHand(outcome) {
+/**
+ * Record a hand. `value` is the hand total (0-10) when the player tapped a
+ * number button, or null when they tapped the plain strip at the bottom of the
+ * pad ("record the hand, no value"). Values are stored on the hand but never
+ * touch the road engine — the roads only care about the winner.
+ */
+function addHand(outcome, value) {
   const shoe = activeShoe();
-  shoe.hands.push({
+  const hand = {
     o: outcome,
     bp: ui.mods.bp ? 1 : 0,
     pp: ui.mods.pp ? 1 : 0,
     nat: ui.mods.nat ? 1 : 0
-  });
+  };
+  const v = Number(value);
+  if (value !== null && value !== undefined && v >= 0 && v <= 10) hand.v = v;
+  shoe.hands.push(hand);
   ui.mods = { bp: false, pp: false, nat: false };
   saveState();
-  tick();
+  playClip(outcome);
   haptic();
   render({ flash: outcome });
 }
@@ -438,6 +488,45 @@ function newShoe() {
   closeSheets();
   render();
   flash('New shoe started');
+}
+
+/* ---------------- entry pad ---------------- */
+
+const PADS = [
+  { o: 'B', cls: 'b', name: 'Banker' },
+  { o: 'P', cls: 'p', name: 'Player' },
+  { o: 'T', cls: 't', name: 'Tie' }
+];
+const PAD_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/**
+ * Three large outcome pads. Each pad is: name + running count, a 0-10 value
+ * grid, and a plain colour strip along the bottom that records the hand
+ * without a value.
+ */
+function buildPads() {
+  const wrap = $('pads');
+  wrap.innerHTML = '';
+  PADS.forEach((p) => {
+    const pad = document.createElement('section');
+    pad.className = 'pad pad-' + p.cls;
+    pad.dataset.o = p.o;
+    let html =
+      '<header class="pad-head">' +
+        '<span class="pad-name">' + p.name + '</span>' +
+        '<b class="pad-count" id="o-' + p.cls + '">0</b>' +
+      '</header>' +
+      '<div class="pad-nums" role="group" aria-label="' + p.name + ' hand value">';
+    PAD_VALUES.forEach((v) => {
+      html += '<button class="num" type="button" data-o="' + p.o + '" data-v="' + v +
+        '" aria-label="' + p.name + ' ' + v + '">' + v + '</button>';
+    });
+    html += '</div>' +
+      '<button class="pad-blank" type="button" data-o="' + p.o +
+        '" aria-label="' + p.name + ' with no value"><span>&ndash;</span></button>';
+    pad.innerHTML = html;
+    wrap.appendChild(pad);
+  });
 }
 
 /* ---------------- entry overlay ---------------- */
@@ -543,15 +632,19 @@ function bind() {
   $('m-sound').addEventListener('click', () => {
     state.settings.sound = !state.settings.sound;
     saveState(); updateMenuLabels();
-    if (state.settings.sound) tick();
+    if (state.settings.sound) beep();
   });
   $('m-haptics').addEventListener('click', () => {
     state.settings.haptics = !state.settings.haptics;
     saveState(); updateMenuLabels(); haptic();
   });
 
-  document.querySelectorAll('.outcome').forEach((btn) => {
-    btn.addEventListener('click', () => addHand(btn.dataset.o));
+  // value buttons and the plain bottom strip both record a hand
+  $('pads').addEventListener('click', (ev) => {
+    const num = ev.target.closest('.num');
+    if (num) { addHand(num.dataset.o, Number(num.dataset.v)); return; }
+    const blank = ev.target.closest('.pad-blank');
+    if (blank) addHand(blank.dataset.o, null);
   });
 
   document.querySelectorAll('.mod').forEach((btn) => {
@@ -607,6 +700,7 @@ function bind() {
 /* ---------------- boot ---------------- */
 
 function boot() {
+  buildPads();
   bind();
   render();
   // fonts / safe-area insets can shift the panels a pixel on first paint

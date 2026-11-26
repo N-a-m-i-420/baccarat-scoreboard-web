@@ -1,5 +1,5 @@
 /* Baccarat Scoreboard - offline app shell */
-const CACHE = 'baccarat-scoreboard-v6';
+const CACHE = 'baccarat-scoreboard-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,9 @@ const ASSETS = [
   './roads.js',
   './app.js',
   './manifest.webmanifest',
+  './audio/banker.mp3',
+  './audio/player.mp3',
+  './audio/tie.mp3',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

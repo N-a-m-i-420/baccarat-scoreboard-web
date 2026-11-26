@@ -220,6 +220,19 @@ body {
   position: absolute;
   border-radius: 50%;
 }
+
+/* hand value (0-10), inside the big road ring - the bead plate cells are too
+   small on a full shoe to carry a legible digit */
+#bigroad .gc .cval {
+  position: absolute;
+  font-size: max(7px, calc(var(--cell) * .38));
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #46321c;
+  opacity: .85;
+  pointer-events: none;
+}
 .corner.bp { width: 22%; height: 22%; top: 9%; left: 9%; background: var(--b); }
 .corner.pp { width: 22%; height: 22%; bottom: 9%; right: 9%; background: var(--p); }
 .corner.nat {
@@ -457,28 +470,32 @@ body {
 .entry-body {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2.55fr);
-  gap: 8px;
-}
-
-.mods {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 0;
+}
+
+/* modifier strip runs across the top so the three value pads get the full width */
+.mods {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .mod {
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  gap: 6px;
+  padding: 0 clamp(7px, 1.1vw, 12px);
+  height: clamp(26px, 6.4vh, 44px);
   font-family: var(--font);
-  font-size: clamp(10px, 2.1vh, 17px);
+  font-size: clamp(9px, 1.95vh, 15px);
   font-weight: 700;
+  white-space: nowrap;
   color: #e8dcc0;
   background: rgba(255, 255, 255, .06);
   border: 1.5px solid rgba(232, 201, 122, .25);
@@ -496,62 +513,152 @@ body {
 
 .preview {
   flex: 0 0 auto;
-  padding: 4px 10px;
-  font-size: clamp(9px, 1.9vh, 14px);
+  display: flex;
+  align-items: center;
+  height: clamp(26px, 6.4vh, 44px);
+  padding: 0 10px;
+  font-size: clamp(9px, 1.85vh, 14px);
   font-weight: 700;
   letter-spacing: .04em;
+  white-space: nowrap;
   color: #0d3524;
   background: rgba(232, 201, 122, .82);
   border-radius: 6px;
-  text-align: center;
 }
 .last-hand {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: clamp(8px, 1.65vh, 12px);
   color: #93ab9c;
-  text-align: center;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.outcomes {
+/* ---------- value pads (one per outcome) ---------- */
+.pads {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  min-height: 0;
 }
 
-.outcome {
+/* a tablet does not need 700px tall pads: cap them and centre the block */
+@media (min-width: 900px) and (min-height: 620px) {
+  .pads { max-height: 430px; }
+  .entry-body { justify-content: center; }
+}
+
+.pad {
   position: relative;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
   border-radius: 12px;
-  border: 0;
-  cursor: pointer;
-  font-family: var(--font);
-  color: #fff;
-  transition: transform .07s ease, filter .12s ease;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, .35), 0 1px 0 rgba(255, 255, 255, .28) inset;
   overflow: hidden;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .35), 0 1px 0 rgba(255, 255, 255, .28) inset;
 }
-.outcome:active { transform: translateY(2px) scale(.99); filter: brightness(1.12); }
-.outcome .o-name {
-  font-size: clamp(12px, 3.4vh, 30px);
+
+.pad-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 9px 1px;
+}
+.pad-name {
+  font-size: clamp(10px, 2.5vh, 22px);
   font-weight: 800;
   letter-spacing: .1em;
   text-transform: uppercase;
+  color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.outcome .o-count {
-  font-size: clamp(10px, 2.2vh, 20px);
+.pad-count {
+  flex: 0 0 auto;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .2);
+  font-size: clamp(9px, 1.9vh, 16px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  opacity: .85;
+  color: #fff;
 }
-.o-b { background: linear-gradient(180deg, #e04a3c 0%, #b32419 100%); }
-.o-p { background: linear-gradient(180deg, #2d78c9 0%, #14477f 100%); }
-.o-t { background: linear-gradient(180deg, #2fa465 0%, #146c3c 100%); }
+
+.pad-nums {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  /* keys sit at the bottom of the pad, right above the no-value strip: thumbs
+     reach there and the leftover space reads as padding under the title */
+  align-content: flex-end;
+  gap: 3px;
+  padding: 3px 6px 5px;
+}
+
+/* 11 buttons: six per row on anything wider than a small phone, the trailing
+   five grow to fill their row. Capped height keeps them from turning into tall
+   bars on a tablet. */
+.num {
+  flex: 1 1 15%;
+  min-width: 0;
+  height: clamp(34px, 12vh, 96px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .17);
+  color: #fff;
+  font-family: var(--font);
+  font-size: clamp(11px, 2.4vh, 22px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .2);
+  transition: background .1s ease, transform .06s ease;
+}
+.num:active { background: rgba(255, 255, 255, .42); transform: translateY(1px); }
+
+/* plain colour strip: tap it to record the hand without a value */
+.pad-blank {
+  flex: 0 0 clamp(26px, 17%, 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, .13);
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, .16);
+  cursor: pointer;
+}
+.pad-blank span {
+  font-size: clamp(11px, 2.4vh, 20px);
+  line-height: 1;
+  color: #fff;
+  opacity: .3;
+}
+.pad-blank:active { background: rgba(0, 0, 0, .3); }
+
+.pad-b { background: linear-gradient(180deg, #e04a3c 0%, #b32419 100%); }
+.pad-p { background: linear-gradient(180deg, #2d78c9 0%, #14477f 100%); }
+.pad-t { background: linear-gradient(180deg, #2fa465 0%, #146c3c 100%); }
+
+@media (orientation: landscape) and (max-width: 720px) {
+  .last-hand { display: none; }
+  .mod { padding: 0 7px; }
+  /* four bigger buttons per row on a small phone instead of six skinny ones */
+  .num { flex: 1 1 22%; }
+}
 
 .flash { animation: flash .22s ease; }
 @keyframes flash {
